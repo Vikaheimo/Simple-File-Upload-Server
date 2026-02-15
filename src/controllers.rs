@@ -1,19 +1,6 @@
-use axum::{body::Bytes, extract::multipart::Field};
+use axum::extract::multipart::Field;
 use fs2::FileExt;
-
-pub struct FileUpload {
-    pub bytes: Bytes,
-    pub filename: String,
-}
-
-impl FileUpload {
-    pub async fn new(value: Field<'_>) -> Option<Self> {
-        let filename = value.file_name()?.to_string();
-        let bytes = value.bytes().await.ok()?;
-
-        Some(Self { filename, bytes })
-    }
-}
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug)]
 pub struct FileUploader {
@@ -61,10 +48,19 @@ impl FileUploader {
         )
     }
 
-    pub async fn upload_file(&mut self, file: FileUpload) -> anyhow::Result<()> {
+    pub async fn upload_file(&mut self, mut field: Field<'_>) -> anyhow::Result<()> {
         let mut file_path = self.folder_path.clone();
-        file_path.push(file.filename);
-        tokio::fs::write(file_path, file.bytes).await?;
+        file_path.push(
+            field
+                .file_name()
+                .unwrap_or(&format!("file_upload_{}", self.upload_count)),
+        );
+        let mut file_handle = tokio::fs::File::create(file_path).await?;
+
+        while let Some(chunk) = field.chunk().await? {
+            file_handle.write_all(&chunk).await?;
+        }
+        file_handle.flush().await?;
 
         self.upload_count = self.upload_count.checked_add(1).ok_or_else(|| {
             anyhow::anyhow!(

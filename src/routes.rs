@@ -4,7 +4,7 @@ use axum::{
     response::IntoResponse,
 };
 
-use crate::{AppState, controllers::FileUpload};
+use crate::AppState;
 
 pub async fn get_info(State(state): State<AppState>) -> String {
     state.lock().await.get_info()
@@ -20,13 +20,8 @@ pub async fn post_upload(
             format!("Multipart read error: {e}"),
         )
     })? {
-        let file = FileUpload::new(field).await.ok_or((
-            StatusCode::BAD_REQUEST,
-            "Invalid file metadata or contents".to_string(),
-        ))?;
-
         let mut uploader = state.lock().await;
-        uploader.upload_file(file).await.map_err(|e| {
+        uploader.upload_file(field).await.map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("File save failed: {e}"),
