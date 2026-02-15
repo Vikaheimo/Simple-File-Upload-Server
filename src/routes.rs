@@ -1,14 +1,31 @@
+use askama::Template;
 use axum::{
     extract::{Multipart, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{Html, IntoResponse},
 };
-use log::info;
+use log::{info, warn};
 
 use crate::AppState;
 
 pub async fn get_info(State(state): State<AppState>) -> String {
     state.get_info().await
+}
+
+#[derive(Template)]
+#[template(path = "upload.html")]
+struct UploadTemplate;
+
+pub async fn get_upload_file_page() -> Result<impl IntoResponse, (StatusCode, String)> {
+    let template = UploadTemplate.render().map_err(|e| {
+        warn!("Template render error: {e}");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {e}"),
+        )
+    })?;
+
+    Ok(Html(template))
 }
 
 pub async fn post_upload(

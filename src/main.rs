@@ -90,6 +90,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/version", get(routes::get_version))
         .route("/info", get(routes::get_info))
         .route("/upload", post(routes::post_upload))
+        .route("/", get(routes::get_upload_file_page))
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(&ENVIRONMENT.server_address).await?;
