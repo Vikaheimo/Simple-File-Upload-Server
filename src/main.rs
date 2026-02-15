@@ -1,6 +1,9 @@
-use axum::{Router, routing::get};
+use axum::{Router, extract::State, routing::get};
 use clap::Parser;
 use fs2::FileExt;
+use std::sync::{Arc, Mutex};
+
+static FILE_UPLOADER_CREATE_ERROR_MESSAGE: &str = "Failed to initialize FileUploader. Ensure the upload folder exists or can be created, the process has permission to access it, and no other instance is running and holding the lock file.";
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -15,7 +18,7 @@ struct Environment {
 }
 
 #[derive(Debug)]
-struct FileUploader {
+pub struct FileUploader {
     #[allow(dead_code)]
     lock_file: std::fs::File,
     folder_path: std::path::PathBuf,
@@ -50,30 +53,47 @@ impl FileUploader {
     }
 
     pub fn print_info(&self) {
-        println!(
+        println!("{}", self.get_info());
+    }
+
+    pub fn get_info(&self) -> String {
+        format!(
             "Uploaded {} files to '{}'",
             self.upload_count,
             self.folder_path.display()
-        );
+        )
     }
 }
 
 lazy_static::lazy_static! {
     static ref ENVIRONMENT: Environment = Environment::parse();
-    static ref FILE_UPLOADER: FileUploader = FileUploader::init(&ENVIRONMENT.folder)
-        .expect("Failed to initialize FileUploader. This application allows only one running instance per upload folder. Check that the upload folder exists or can be created, that the process has permissions to access it, and that no other instance of this application is currently running and holding the lock file.");
 }
+
+pub type AppState = Arc<Mutex<FileUploader>>;
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/version", get(version_route));
+    let shared_state: AppState = Arc::new(Mutex::new(
+        FileUploader::init(&ENVIRONMENT.folder)
+            .expect(FILE_UPLOADER_CREATE_ERROR_MESSAGE),
+    ));
+    let app = Router::new()
+        .route("/version", get(version_route))
+        .route("/info", get(info_route))
+        .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(&ENVIRONMENT.server_address)
         .await
         .unwrap();
     println!("Listening on {}", listener.local_addr().unwrap());
-    FILE_UPLOADER.print_info();
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn info_route(State(state): State<AppState>) -> String {
+    state
+        .lock()
+        .expect("Failed to acquire lock on FileUploader state")
+        .get_info()
 }
 
 async fn version_route() -> &'static str {
