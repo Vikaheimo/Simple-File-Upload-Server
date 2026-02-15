@@ -1,13 +1,13 @@
 use axum::extract::multipart::Field;
 use fs2::FileExt;
-use tokio::io::AsyncWriteExt;
+use tokio::{io::AsyncWriteExt, sync::Mutex};
 
 #[derive(Debug)]
 pub struct FileUploader {
     #[allow(dead_code)]
     lock_file: std::fs::File,
     folder_path: std::path::PathBuf,
-    upload_count: u64,
+    upload_count: tokio::sync::Mutex<u64>,
 }
 
 impl FileUploader {
@@ -27,7 +27,7 @@ impl FileUploader {
         Ok(Self {
             lock_file,
             folder_path,
-            upload_count: 0,
+            upload_count: Mutex::new(0),
         })
     }
 
@@ -36,24 +36,39 @@ impl FileUploader {
         Self::new(as_path)
     }
 
-    pub fn print_info(&self) {
-        println!("{}", self.get_info());
+    pub async fn print_info(&self) {
+        println!("{}", self.get_info().await);
     }
 
-    pub fn get_info(&self) -> String {
+    pub async fn get_info(&self) -> String {
         format!(
             "Uploaded {} files to '{}'",
-            self.upload_count,
+            self.upload_count.lock().await,
             self.folder_path.display()
         )
     }
 
-    pub async fn upload_file(&mut self, mut field: Field<'_>) -> anyhow::Result<()> {
+    pub async fn upload_file(&self, field: Field<'_>) -> anyhow::Result<()> {
+        let file_id = {
+            let mut count = self.upload_count.lock().await;
+
+            let id = *count;
+
+            *count = count
+                .checked_add(1)
+                .ok_or_else(|| anyhow::anyhow!("Upload counter overflow"))?;
+
+            id
+        };
+        self.write_file(field, file_id).await
+    }
+
+    pub async fn write_file(&self, mut field: Field<'_>, file_id: u64) -> anyhow::Result<()> {
         let mut file_path = self.folder_path.clone();
         file_path.push(
             field
                 .file_name()
-                .unwrap_or(&format!("file_upload_{}", self.upload_count)),
+                .unwrap_or(&format!("file_upload_{}", file_id)),
         );
         let mut file_handle = tokio::fs::File::create(file_path).await?;
 
@@ -61,13 +76,6 @@ impl FileUploader {
             file_handle.write_all(&chunk).await?;
         }
         file_handle.flush().await?;
-
-        self.upload_count = self.upload_count.checked_add(1).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Cannot upload more files: counter at maximum value of {}",
-                self.upload_count
-            )
-        })?;
         Ok(())
     }
 }

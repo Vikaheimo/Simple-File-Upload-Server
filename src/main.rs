@@ -41,7 +41,6 @@ use axum::{
 };
 use clap::Parser;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use crate::controllers::FileUploader;
 
@@ -64,7 +63,7 @@ lazy_static::lazy_static! {
     static ref ENVIRONMENT: Environment = Environment::parse();
 }
 
-pub type AppState = Arc<Mutex<FileUploader>>;
+pub type AppState = Arc<FileUploader>;
 
 #[tokio::main]
 async fn main() {
@@ -84,7 +83,7 @@ async fn main() {
 }
 
 async fn run() -> anyhow::Result<()> {
-    let shared_state: AppState = Arc::new(Mutex::new(FileUploader::init(&ENVIRONMENT.folder)?));
+    let shared_state: AppState = Arc::new(FileUploader::init(&ENVIRONMENT.folder)?);
     let app = Router::new()
         .route("/version", get(routes::get_version))
         .route("/info", get(routes::get_info))

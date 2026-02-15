@@ -7,7 +7,7 @@ use axum::{
 use crate::AppState;
 
 pub async fn get_info(State(state): State<AppState>) -> String {
-    state.lock().await.get_info()
+    state.get_info().await
 }
 
 pub async fn post_upload(
@@ -20,8 +20,7 @@ pub async fn post_upload(
             format!("Multipart read error: {e}"),
         )
     })? {
-        let mut uploader = state.lock().await;
-        uploader.upload_file(field).await.map_err(|e| {
+        state.upload_file(field).await.map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("File save failed: {e}"),
