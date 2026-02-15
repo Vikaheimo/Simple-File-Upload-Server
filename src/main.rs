@@ -55,6 +55,9 @@ struct Environment {
     /// Folder where uploads are stored at
     #[arg(short, long, default_value_t=String::from("./uploads"))]
     pub folder: String,
+
+    #[arg(short, long, default_value_t = false)]
+    pub verbose: bool,
 }
 
 pub struct FileUpload {
@@ -139,7 +142,23 @@ lazy_static::lazy_static! {
 pub type AppState = Arc<Mutex<FileUploader>>;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
+    match run().await {
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!(
+                "Failed to start server on address {}",
+                ENVIRONMENT.server_address
+            );
+
+            if ENVIRONMENT.verbose {
+                eprintln!("{}", e);
+            }
+        }
+    }
+}
+
+async fn run() -> anyhow::Result<()> {
     let shared_state: AppState = Arc::new(Mutex::new(FileUploader::init(&ENVIRONMENT.folder)?));
     let app = Router::new()
         .route("/version", get(version_route))
