@@ -64,12 +64,15 @@ impl FileUploader {
     }
 
     pub async fn write_file(&self, mut field: Field<'_>, file_id: u64) -> anyhow::Result<()> {
+        let default_filename = format!("file_upload_{}", file_id);
+        let raw_filename = field.file_name().unwrap_or(&default_filename);
+        let safe_name = std::path::Path::new(raw_filename)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or(default_filename);
+
         let mut file_path = self.folder_path.clone();
-        file_path.push(
-            field
-                .file_name()
-                .unwrap_or(&format!("file_upload_{}", file_id)),
-        );
+        file_path.push(safe_name);
         let mut file_handle = tokio::fs::File::create(file_path).await?;
 
         while let Some(chunk) = field.chunk().await? {
