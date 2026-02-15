@@ -33,18 +33,20 @@ pub async fn post_upload(
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     while let Some(field) = multipart.next_field().await.map_err(|e| {
+        warn!("Multipart read error: {e}");
         (
             StatusCode::BAD_REQUEST,
             format!("Multipart read error: {e}"),
         )
     })? {
         let file_data = state.upload_file(field).await.map_err(|e| {
+            warn!("File save failed: {e}");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("File save failed: {e}"),
             )
         })?;
-        info!("File '{}' saved successfully!", &file_data.filename)
+        info!("File '{}' saved successfully!", &file_data.filename);
     }
 
     Ok((StatusCode::OK, "File uploaded successfully!"))
