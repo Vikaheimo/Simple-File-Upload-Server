@@ -36,8 +36,7 @@ pub mod controllers;
 pub mod routes;
 
 use axum::{
-    Router,
-    routing::{get, post},
+    Router, extract::DefaultBodyLimit, routing::{get, post}
 };
 use clap::Parser;
 use log::{error, info};
@@ -91,6 +90,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/info", get(routes::get_info))
         .route("/upload", post(routes::post_upload))
         .route("/", get(routes::get_upload_file_page))
+        .layer(DefaultBodyLimit::disable())
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(&ENVIRONMENT.server_address).await?;
