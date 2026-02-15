@@ -40,6 +40,7 @@ use axum::{
     routing::{get, post},
 };
 use clap::Parser;
+use log::{error, info};
 use std::sync::Arc;
 
 use crate::controllers::FileUploader;
@@ -67,16 +68,17 @@ pub type AppState = Arc<FileUploader>;
 
 #[tokio::main]
 async fn main() {
+    colog::init();
     match run().await {
         Ok(_) => (),
         Err(e) => {
-            eprintln!(
+            error!(
                 "Failed to start server on address {}",
                 ENVIRONMENT.server_address
             );
 
             if ENVIRONMENT.verbose {
-                eprintln!("{}", e);
+                error!("{}", e);
             }
         }
     }
@@ -91,7 +93,7 @@ async fn run() -> anyhow::Result<()> {
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(&ENVIRONMENT.server_address).await?;
-    println!("Listening on {}", listener.local_addr()?);
+    info!("Server listening on {}", listener.local_addr()?);
     axum::serve(listener, app).await?;
     Ok(())
 }

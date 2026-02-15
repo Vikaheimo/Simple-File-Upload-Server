@@ -3,6 +3,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use log::info;
 
 use crate::AppState;
 
@@ -20,12 +21,13 @@ pub async fn post_upload(
             format!("Multipart read error: {e}"),
         )
     })? {
-        state.upload_file(field).await.map_err(|e| {
+        let file_data = state.upload_file(field).await.map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("File save failed: {e}"),
             )
         })?;
+        info!("File '{}' saved successfully!", &file_data.filename)
     }
 
     Ok((StatusCode::OK, "File uploaded successfully!"))

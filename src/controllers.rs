@@ -3,6 +3,11 @@ use fs2::FileExt;
 use tokio::{io::AsyncWriteExt, sync::Mutex};
 
 #[derive(Debug)]
+pub struct Filedata {
+    pub filename: String,
+}
+
+#[derive(Debug)]
 pub struct FileUploader {
     #[allow(dead_code)]
     lock_file: std::fs::File,
@@ -48,7 +53,7 @@ impl FileUploader {
         )
     }
 
-    pub async fn upload_file(&self, field: Field<'_>) -> anyhow::Result<()> {
+    pub async fn upload_file(&self, field: Field<'_>) -> anyhow::Result<Filedata> {
         let file_id = {
             let mut count = self.upload_count.lock().await;
 
@@ -63,7 +68,7 @@ impl FileUploader {
         self.write_file(field, file_id).await
     }
 
-    pub async fn write_file(&self, mut field: Field<'_>, file_id: u64) -> anyhow::Result<()> {
+    pub async fn write_file(&self, mut field: Field<'_>, file_id: u64) -> anyhow::Result<Filedata> {
         let default_filename = format!("file_upload_{}", file_id);
         let raw_filename = field.file_name().unwrap_or(&default_filename);
         let safe_name = std::path::Path::new(raw_filename)
@@ -72,13 +77,15 @@ impl FileUploader {
             .unwrap_or(default_filename);
 
         let mut file_path = self.folder_path.clone();
-        file_path.push(safe_name);
+        file_path.push(&safe_name);
         let mut file_handle = tokio::fs::File::create(file_path).await?;
 
         while let Some(chunk) = field.chunk().await? {
             file_handle.write_all(&chunk).await?;
         }
         file_handle.flush().await?;
-        Ok(())
+        Ok(Filedata {
+            filename: safe_name,
+        })
     }
 }
