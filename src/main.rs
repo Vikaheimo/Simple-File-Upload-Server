@@ -32,18 +32,18 @@
 #![deny(clippy::transmute_ptr_to_ref)] // Prevent unsafe transmutation from pointers to references
 #![deny(clippy::transmute_undefined_repr)] // Detect transmutes with potentially undefined representations
 
+pub mod controllers;
+pub mod routes;
+
 use axum::{
     Router,
-    body::Bytes,
-    extract::{Multipart, State, multipart::Field},
-    http::StatusCode,
-    response::IntoResponse,
     routing::{get, post},
 };
 use clap::Parser;
-use fs2::FileExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+use crate::controllers::FileUploader;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -58,81 +58,6 @@ struct Environment {
 
     #[arg(short, long, default_value_t = false)]
     pub verbose: bool,
-}
-
-pub struct FileUpload {
-    pub bytes: Bytes,
-    pub filename: String,
-}
-
-impl FileUpload {
-    async fn new(value: Field<'_>) -> Option<Self> {
-        let filename = value.file_name()?.to_string();
-        let bytes = value.bytes().await.ok()?;
-
-        Some(Self { filename, bytes })
-    }
-}
-
-#[derive(Debug)]
-pub struct FileUploader {
-    #[allow(dead_code)]
-    lock_file: std::fs::File,
-    folder_path: std::path::PathBuf,
-    upload_count: u64,
-}
-
-impl FileUploader {
-    fn new(folder_path: std::path::PathBuf) -> anyhow::Result<Self> {
-        std::fs::create_dir_all(&folder_path)?;
-
-        let mut lockfile_path = folder_path.clone();
-        lockfile_path.push(".lock");
-        let lock_file = std::fs::File::options()
-            .read(true)
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(lockfile_path)?;
-        lock_file.try_lock_exclusive()?;
-
-        Ok(Self {
-            lock_file,
-            folder_path,
-            upload_count: 0,
-        })
-    }
-
-    pub fn init(folder_path: &str) -> anyhow::Result<Self> {
-        let as_path = std::path::PathBuf::from(folder_path);
-        Self::new(as_path)
-    }
-
-    pub fn print_info(&self) {
-        println!("{}", self.get_info());
-    }
-
-    pub fn get_info(&self) -> String {
-        format!(
-            "Uploaded {} files to '{}'",
-            self.upload_count,
-            self.folder_path.display()
-        )
-    }
-
-    pub async fn upload_file(&mut self, file: FileUpload) -> anyhow::Result<()> {
-        let mut file_path = self.folder_path.clone();
-        file_path.push(file.filename);
-        tokio::fs::write(file_path, file.bytes).await?;
-
-        self.upload_count = self.upload_count.checked_add(1).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Cannot upload more files: counter at maximum value of {}",
-                self.upload_count
-            )
-        })?;
-        Ok(())
-    }
 }
 
 lazy_static::lazy_static! {
@@ -161,48 +86,13 @@ async fn main() {
 async fn run() -> anyhow::Result<()> {
     let shared_state: AppState = Arc::new(Mutex::new(FileUploader::init(&ENVIRONMENT.folder)?));
     let app = Router::new()
-        .route("/version", get(version_route))
-        .route("/info", get(info_route))
-        .route("/upload", post(upload_route))
+        .route("/version", get(routes::get_version))
+        .route("/info", get(routes::get_info))
+        .route("/upload", post(routes::post_upload))
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(&ENVIRONMENT.server_address).await?;
     println!("Listening on {}", listener.local_addr()?);
     axum::serve(listener, app).await?;
     Ok(())
-}
-
-async fn info_route(State(state): State<AppState>) -> String {
-    state.lock().await.get_info()
-}
-
-async fn upload_route(
-    State(state): State<AppState>,
-    mut multipart: Multipart,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        (
-            StatusCode::BAD_REQUEST,
-            format!("Multipart read error: {e}"),
-        )
-    })? {
-        let file = FileUpload::new(field).await.ok_or((
-            StatusCode::BAD_REQUEST,
-            "Invalid file metadata or contents".to_string(),
-        ))?;
-
-        let mut uploader = state.lock().await;
-        uploader.upload_file(file).await.map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("File save failed: {e}"),
-            )
-        })?;
-    }
-
-    Ok((StatusCode::OK, "File uploaded successfully!"))
-}
-
-async fn version_route() -> &'static str {
-    env!("CARGO_PKG_VERSION")
 }
