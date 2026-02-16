@@ -34,6 +34,7 @@
 
 pub mod controllers;
 pub mod error;
+pub mod middleware;
 pub mod routes;
 
 use axum::{
@@ -97,6 +98,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/", get(routes::get_file_display_page))
         .fallback(get_not_found_page)
         .layer(DefaultBodyLimit::disable())
+        .layer(axum::middleware::from_fn(middleware::logging_middleware))
         .with_state(shared_state);
 
     let listener = tokio::net::TcpListener::bind(&ENVIRONMENT.server_address).await?;
