@@ -40,7 +40,7 @@ impl FileType {
             None => FileType::Unknown { extension: None },
             Some("mov" | "mp4") => FileType::Video,
             Some("txt") => FileType::Text,
-            Some(".jpg" | ".png") => FileType::Image,
+            Some("jpg" | "png") => FileType::Image,
             Some(other_extension) => FileType::Unknown {
                 extension: Some(other_extension.to_owned()),
             },
