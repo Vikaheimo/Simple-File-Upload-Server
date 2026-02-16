@@ -45,7 +45,7 @@ use clap::Parser;
 use log::{error, info};
 use std::sync::Arc;
 
-use crate::controllers::FileUploader;
+use crate::{controllers::FileUploader, routes::get_not_found_page};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -95,6 +95,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/upload", get(routes::get_upload_file_page))
         .route("/download", get(routes::get_download_file))
         .route("/", get(routes::get_file_display_page))
+        .fallback(get_not_found_page)
         .layer(DefaultBodyLimit::disable())
         .with_state(shared_state);
 

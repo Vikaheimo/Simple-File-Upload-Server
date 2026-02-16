@@ -80,3 +80,12 @@ pub async fn post_upload(
 pub async fn get_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
+
+#[derive(Template)]
+#[template(path = "404.html")]
+pub struct NotFoundTemplate;
+
+pub async fn get_not_found_page() -> ApplicationResult<impl IntoResponse> {
+    let template = NotFoundTemplate;
+    Ok((StatusCode::NOT_FOUND, Html(template.render()?)).into_response())
+}
