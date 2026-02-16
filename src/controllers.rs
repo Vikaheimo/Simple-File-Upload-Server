@@ -2,7 +2,10 @@ use axum::extract::multipart::Field;
 use fs2::FileExt;
 use tokio::{fs::File, io::AsyncWriteExt, sync::Mutex};
 
-use crate::routes::FileDownloadQuery;
+use crate::{
+    error::{ApplicationError, ApplicationResult},
+    routes::FileDownloadQuery,
+};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Filedata {
@@ -63,22 +66,27 @@ impl FileUploader {
         )
     }
 
-    pub async fn upload_file(&self, field: Field<'_>) -> anyhow::Result<Filedata> {
+    pub async fn upload_file(&self, field: Field<'_>) -> ApplicationResult<Filedata> {
         let file_id = {
             let mut count = self.upload_count.lock().await;
 
             let id = *count;
 
-            *count = count
-                .checked_add(1)
-                .ok_or_else(|| anyhow::anyhow!("Upload counter overflow"))?;
+            *count = count.checked_add(1).ok_or(ApplicationError {
+                source: anyhow::anyhow!("File count overflow!"),
+                kind: crate::error::ErrorKind::Internal,
+            })?;
 
             id
         };
         self.write_file(field, file_id).await
     }
 
-    pub async fn write_file(&self, mut field: Field<'_>, file_id: u64) -> anyhow::Result<Filedata> {
+    pub async fn write_file(
+        &self,
+        mut field: Field<'_>,
+        file_id: u64,
+    ) -> ApplicationResult<Filedata> {
         let default_filename = format!("file_upload_{}", file_id);
         let raw_filename = field.file_name().unwrap_or(&default_filename);
         let safe_name = std::path::Path::new(raw_filename)
@@ -99,7 +107,7 @@ impl FileUploader {
         })
     }
 
-    pub async fn get_all_file_data(&self) -> anyhow::Result<Vec<Filedata>> {
+    pub async fn get_all_file_data(&self) -> ApplicationResult<Vec<Filedata>> {
         let mut file_reader = tokio::fs::read_dir(&self.folder_path).await?;
         let mut files = vec![];
 
@@ -113,7 +121,7 @@ impl FileUploader {
         Ok(files)
     }
 
-    pub async fn download_file(&self, query: &FileDownloadQuery) -> anyhow::Result<Option<File>> {
+    pub async fn download_file(&self, query: &FileDownloadQuery) -> ApplicationResult<File> {
         let path = std::path::Path::new(&query.filename);
         let has_traversal = path.components().any(|c| {
             matches!(
@@ -121,21 +129,22 @@ impl FileUploader {
                 std::path::Component::ParentDir
                     | std::path::Component::RootDir
                     | std::path::Component::Prefix(_)
-
             )
         });
 
         let is_invalid_filename = has_traversal || query.filename.is_empty();
         if is_invalid_filename {
-            return Ok(None);
+            return Err(ApplicationError {
+                source: anyhow::anyhow!(""),
+                kind: crate::error::ErrorKind::InvalidFilename,
+            });
         }
         let mut file_path = self.folder_path.clone();
         file_path.push(&query.filename);
-        let file = match tokio::fs::File::open(file_path).await {
-            Ok(f) => f,
-            Err(_) => return Ok(None),
-        };
+        let file = tokio::fs::File::open(file_path)
+            .await
+            .map_err(|e| ApplicationError::from_io_with_path(e, &query.filename))?;
 
-        Ok(Some(file))
+        Ok(file)
     }
 }

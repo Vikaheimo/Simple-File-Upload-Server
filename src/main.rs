@@ -33,6 +33,7 @@
 #![deny(clippy::transmute_undefined_repr)] // Detect transmutes with potentially undefined representations
 
 pub mod controllers;
+pub mod error;
 pub mod routes;
 
 use axum::{
