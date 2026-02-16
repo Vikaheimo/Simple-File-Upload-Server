@@ -6,7 +6,7 @@ use axum::{
 };
 use log::{info, warn};
 
-use crate::AppState;
+use crate::{AppState, controllers::Filedata};
 
 pub async fn get_info(State(state): State<AppState>) -> String {
     state.get_info().await
@@ -24,6 +24,35 @@ pub async fn get_upload_file_page() -> Result<impl IntoResponse, (StatusCode, St
             format!("Template render error: {e}"),
         )
     })?;
+
+    Ok(Html(template))
+}
+
+#[derive(Template)]
+#[template(path = "file-display.html")]
+struct FileDisplayTemplate<'a> {
+    files: &'a [Filedata],
+}
+
+pub async fn get_file_display_page(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let files = state.get_all_file_data().await.map_err(|e| {
+        warn!("Directory read error: {e}");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Directory read error: {e}"),
+        )
+    })?;
+    let template = FileDisplayTemplate { files: &files }
+        .render()
+        .map_err(|e| {
+            warn!("Template render error: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template render error: {e}"),
+            )
+        })?;
 
     Ok(Html(template))
 }

@@ -36,7 +36,9 @@ pub mod controllers;
 pub mod routes;
 
 use axum::{
-    Router, extract::DefaultBodyLimit, routing::{get, post}
+    Router,
+    extract::DefaultBodyLimit,
+    routing::{get, post},
 };
 use clap::Parser;
 use log::{error, info};
@@ -89,7 +91,8 @@ async fn run() -> anyhow::Result<()> {
         .route("/version", get(routes::get_version))
         .route("/info", get(routes::get_info))
         .route("/upload", post(routes::post_upload))
-        .route("/", get(routes::get_upload_file_page))
+        .route("/upload", get(routes::get_upload_file_page))
+        .route("/", get(routes::get_file_display_page))
         .layer(DefaultBodyLimit::disable())
         .with_state(shared_state);
 

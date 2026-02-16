@@ -2,9 +2,17 @@ use axum::extract::multipart::Field;
 use fs2::FileExt;
 use tokio::{io::AsyncWriteExt, sync::Mutex};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Filedata {
     pub filename: String,
+}
+
+impl From<tokio::fs::DirEntry> for Filedata {
+    fn from(value: tokio::fs::DirEntry) -> Self {
+        Filedata {
+            filename: value.file_name().to_string_lossy().to_string(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -87,5 +95,19 @@ impl FileUploader {
         Ok(Filedata {
             filename: safe_name,
         })
+    }
+
+    pub async fn get_all_file_data(&self) -> anyhow::Result<Vec<Filedata>> {
+        let mut file_reader = tokio::fs::read_dir(&self.folder_path).await?;
+        let mut files = vec![];
+
+        while let Some(file) = file_reader.next_entry().await? {
+            if file.file_type().await?.is_dir() {
+                continue;
+            }
+            files.push(Filedata::from(file));
+        }
+
+        Ok(files)
     }
 }
