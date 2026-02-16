@@ -69,6 +69,10 @@ lazy_static::lazy_static! {
 
 pub type AppState = Arc<FileUploader>;
 
+#[derive(rust_embed::RustEmbed, Clone)]
+#[folder = "static"]
+pub struct Static;
+
 #[tokio::main]
 async fn main() {
     colog::init();
@@ -89,6 +93,7 @@ async fn main() {
 
 async fn run() -> anyhow::Result<()> {
     let shared_state: AppState = Arc::new(FileUploader::init(&ENVIRONMENT.folder)?);
+    let serve_static = axum_embed::ServeEmbed::<Static>::new();
     let app = Router::new()
         .route("/version", get(routes::get_version))
         .route("/info", get(routes::get_info))
@@ -96,7 +101,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/upload", get(routes::get_upload_file_page))
         .route("/download", get(routes::get_download_file))
         .route("/", get(routes::get_file_display_page))
-        .merge(routes::static_content_router())
+        .nest_service("/static", serve_static)
         .fallback(get_not_found_page)
         .layer(DefaultBodyLimit::disable())
         .layer(axum::middleware::from_fn(middleware::logging_middleware))
