@@ -1,6 +1,8 @@
 use axum::extract::multipart::Field;
 use fs2::FileExt;
-use tokio::{io::AsyncWriteExt, sync::Mutex};
+use tokio::{fs::File, io::AsyncWriteExt, sync::Mutex};
+
+use crate::routes::FileDownloadQuery;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Filedata {
@@ -109,5 +111,31 @@ impl FileUploader {
         }
 
         Ok(files)
+    }
+
+    pub async fn download_file(&self, query: &FileDownloadQuery) -> anyhow::Result<Option<File>> {
+        let path = std::path::Path::new(&query.filename);
+        let has_traversal = path.components().any(|c| {
+            matches!(
+                c,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+
+            )
+        });
+
+        let is_invalid_filename = has_traversal || query.filename.is_empty();
+        if is_invalid_filename {
+            return Ok(None);
+        }
+        let mut file_path = self.folder_path.clone();
+        file_path.push(&query.filename);
+        let file = match tokio::fs::File::open(file_path).await {
+            Ok(f) => f,
+            Err(_) => return Ok(None),
+        };
+
+        Ok(Some(file))
     }
 }

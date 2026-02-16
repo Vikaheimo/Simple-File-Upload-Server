@@ -1,10 +1,12 @@
 use askama::Template;
 use axum::{
-    extract::{Multipart, State},
-    http::StatusCode,
+    body::Body,
+    extract::{Multipart, Query, State},
+    http::{StatusCode, header},
     response::{Html, IntoResponse},
 };
 use log::{info, warn};
+use tokio_util::io::ReaderStream;
 
 use crate::{AppState, controllers::Filedata};
 
@@ -55,6 +57,48 @@ pub async fn get_file_display_page(
         })?;
 
     Ok(Html(template))
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct FileDownloadQuery {
+    pub filename: String,
+}
+
+pub async fn get_download_file(
+    State(state): State<AppState>,
+    Query(query): Query<FileDownloadQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let file = match state.download_file(&query).await {
+        Ok(None) => {
+            warn!("File '{}' not found", query.filename);
+            return Err((
+                StatusCode::NOT_FOUND,
+                format!("File '{}' not found", query.filename),
+            ));
+        }
+        Ok(Some(s)) => s,
+        Err(e) => {
+            warn!("Failed to download file ({}): {}", query.filename, e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to download file ({}): {}", query.filename, e),
+            ));
+        }
+    };
+
+    let stream = ReaderStream::new(file);
+    let body = Body::from_stream(stream);
+    info!("File '{}' found, starting download!", query.filename);
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/octet-stream".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{}\"", query.filename),
+            ),
+        ],
+        body,
+    ))
 }
 
 pub async fn post_upload(

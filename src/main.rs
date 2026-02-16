@@ -92,6 +92,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/info", get(routes::get_info))
         .route("/upload", post(routes::post_upload))
         .route("/upload", get(routes::get_upload_file_page))
+        .route("/download", get(routes::get_download_file))
         .route("/", get(routes::get_file_display_page))
         .layer(DefaultBodyLimit::disable())
         .with_state(shared_state);
