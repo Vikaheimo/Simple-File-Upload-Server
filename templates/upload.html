@@ -1,135 +1,129 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Drag & Drop Upload</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background: #f5f7fa;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-      }
+{% extends "base.html" %} {% block title %}Drag & Drop Upload{% endblock %} {%
+block styles %}
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
 
-      .upload-container {
-        width: 400px;
-      }
+  .upload-container {
+    width: 400px;
+  }
 
-      .drop-zone {
-        border: 2px dashed #4a90e2;
-        border-radius: 10px;
-        padding: 40px;
-        text-align: center;
-        background: #ffffff;
-        cursor: pointer;
-        transition:
-          background 0.2s,
-          border-color 0.2s;
-      }
+  .drop-zone {
+    border: 2px dashed #4a90e2;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    background: #ffffff;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+  }
 
-      .drop-zone.dragover {
-        background: #e6f0ff;
-        border-color: #1c6dd0;
-      }
+  .drop-zone.dragover {
+    background: #e6f0ff;
+    border-color: #1c6dd0;
+  }
 
-      .drop-zone input {
-        display: none;
-      }
+  .drop-zone input {
+    display: none;
+  }
 
-      .toast {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: #28a745;
-        color: white;
-        padding: 12px 18px;
-        border-radius: 6px;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.3s ease;
-      }
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #28a745;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 6px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+  }
 
-      .toast.show {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="upload-container">
-      <div class="drop-zone" id="drop-zone">
-        <p>Drag & drop files here</p>
-        <p>or click to select files</p>
-        <input type="file" id="file-input" multiple />
-      </div>
-    </div>
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="upload-container">
+  <div class="drop-zone" id="drop-zone">
+    <p>Drag & drop files here</p>
+    <p>or click to select files</p>
+    <input type="file" id="file-input" multiple />
+  </div>
+</div>
 
-    <div class="toast" id="toast">File uploaded successfully ✅</div>
+<div class="toast" id="toast">File uploaded successfully ✅</div>
+{% endblock %} {% block scripts %}
+<script>
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("file-input");
+  const toast = document.getElementById("toast");
 
-    <script>
-      const dropZone = document.getElementById("drop-zone");
-      const fileInput = document.getElementById("file-input");
-      const toast = document.getElementById("toast");
+  dropZone.addEventListener("click", () => fileInput.click());
 
-      dropZone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => {
+    uploadFiles(e.target.files);
+  });
 
-      fileInput.addEventListener("change", (e) => {
-        uploadFiles(e.target.files);
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+
+  dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("dragover");
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    uploadFiles(e.dataTransfer.files);
+  });
+
+  async function uploadFiles(files) {
+    if (!files.length) return;
+
+    const formData = new FormData();
+
+    Array.from(files).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await fetch("/upload", {
+        method: "POST",
+        body: formData,
       });
 
-      dropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropZone.classList.add("dragover");
-      });
-
-      dropZone.addEventListener("dragleave", () => {
-        dropZone.classList.remove("dragover");
-      });
-
-      dropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropZone.classList.remove("dragover");
-        uploadFiles(e.dataTransfer.files);
-      });
-
-      async function uploadFiles(files) {
-        if (!files.length) return;
-
-        const formData = new FormData();
-
-        Array.from(files).forEach((file) => {
-          formData.append("files", file);
-        });
-
-        try {
-          const response = await fetch("/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error("Upload failed");
-          }
-
-          showToast("File uploaded successfully ✅", true);
-        } catch (error) {
-          showToast("Upload failed ❌", false);
-        }
+      if (!response.ok) {
+        throw new Error("Upload failed");
       }
 
-      function showToast(message, success) {
-        toast.textContent = message;
-        toast.style.background = success ? "#28a745" : "#dc3545";
-        toast.classList.add("show");
+      showToast("File uploaded successfully ✅", true);
+    } catch (error) {
+      showToast("Upload failed ❌", false);
+    }
+  }
 
-        setTimeout(() => {
-          toast.classList.remove("show");
-        }, 3000);
-      }
-    </script>
-  </body>
-</html>
+  function showToast(message, success) {
+    toast.textContent = message;
+    toast.style.background = success ? "#28a745" : "#dc3545";
+    toast.classList.add("show");
+
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, 3000);
+  }
+</script>
+{% endblock %}

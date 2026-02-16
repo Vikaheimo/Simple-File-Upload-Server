@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{% block title %}Simple file upload server{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+
+    <!-- Page-specific styles -->
+    {% block styles %}{% endblock %}
+  </head>
+
+  <body>
+    {% block content %}{% endblock %} {% block scripts %}{% endblock %}
+  </body>
+</html>

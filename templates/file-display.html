@@ -1,141 +1,123 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Uploaded Files</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background: #f5f7fa;
-        margin: 0;
-        padding: 40px;
-      }
+{% extends "base.html" %} {% block title %}Uploaded Files{% endblock %} {% block
+styles %}
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    margin: 0;
+    padding: 40px;
+  }
 
-      .container {
-        max-width: 900px;
-        margin: 0 auto;
-      }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
 
-      h1 {
-        text-align: center;
-        margin-bottom: 30px;
-      }
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+  }
 
-      .file-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 20px;
-      }
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 20px;
+  }
 
-      .file-card {
-        background: white;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        transition:
-          transform 0.15s ease,
-          box-shadow 0.15s ease;
-        cursor: pointer;
-        text-decoration: none;
-        color: inherit;
-        display: block;
-      }
+  .file-card {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
 
-      .file-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
-      }
+  .file-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+  }
 
-      .file-icon {
-        width: 48px;
-        height: 48px;
-        margin-bottom: 10px;
-        object-fit: contain;
-      }
+  .file-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 10px;
+    object-fit: contain;
+  }
 
-      .file-name {
-        font-size: 14px;
-        word-break: break-word;
-      }
+  .file-name {
+    font-size: 14px;
+    word-break: break-word;
+  }
 
-      .empty {
-        text-align: center;
-        color: #777;
-        margin-top: 40px;
-      }
+  .empty {
+    text-align: center;
+    color: #777;
+    margin-top: 40px;
+  }
 
-      .fab {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: #4a90e2;
-        color: white;
-        font-size: 36px;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
-        transition:
-          transform 0.15s ease,
-          box-shadow 0.15s ease,
-          background 0.15s ease;
-      }
+  .fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #4a90e2;
+    color: white;
+    font-size: 36px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      background 0.15s ease;
+  }
 
-      .fab:hover {
-        background: #1c6dd0;
-        transform: scale(1.08);
-        box-shadow: 0 10px 18px rgba(0, 0, 0, 0.25);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Uploaded Files</h1>
+  .fab:hover {
+    background: #1c6dd0;
+    transform: scale(1.08);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.25);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container">
+  <h1>Uploaded Files</h1>
 
-      {% if files.len() == 0 %}
-      <p class="empty">No files uploaded yet.</p>
-      {% else %}
-      <div class="file-grid">
-        {% for file in files %}
-        <a
-          href="/download?filename={{ file.filename | urlencode }}"
-          class="file-card"
-        >
-          {% match file.file_type %} {% when FileType::Text %}
-          <img src="/static/icons/text.png" alt="Text File" class="file-icon" />
-          {% when FileType::Image %}
-          <img
-            src="/static/icons/image.png"
-            alt="Image File"
-            class="file-icon"
-          />
-          {% when FileType::Video %}
-          <img
-            src="/static/icons/video.png"
-            alt="Video File"
-            class="file-icon"
-          />
-          {% when FileType::Unknown { extension } %}
-          <img
-            src="/static/icons/file.png"
-            alt="Unknown File"
-            class="file-icon"
-          />
-          {% endmatch %}
+  {% if files.len() == 0 %}
+  <p class="empty">No files uploaded yet.</p>
+  {% else %}
+  <div class="file-grid">
+    {% for file in files %}
+    <a
+      href="/download?filename={{ file.filename | urlencode }}"
+      class="file-card"
+    >
+      {% match file.file_type %} {% when FileType::Text %}
+      <img src="/static/icons/text.png" alt="Text File" class="file-icon" />
+      {% when FileType::Image %}
+      <img src="/static/icons/image.png" alt="Image File" class="file-icon" />
+      {% when FileType::Video %}
+      <img src="/static/icons/video.png" alt="Video File" class="file-icon" />
+      {% when FileType::Unknown { extension } %}
+      <img src="/static/icons/file.png" alt="Unknown File" class="file-icon" />
+      {% endmatch %}
 
-          <div class="file-name">{{ file.filename }}</div>
-        </a>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
+      <div class="file-name">{{ file.filename }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
 
-    <a href="/upload" class="fab">+</a>
-  </body>
-</html>
+<a href="/upload" class="fab">+</a>
+{% endblock %}
