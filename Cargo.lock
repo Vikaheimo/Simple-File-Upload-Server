@@ -1092,6 +1092,7 @@ dependencies = [
  "include_dir",
  "lazy_static",
  "log",
+ "rust-embed",
  "serde",
  "strum",
  "strum_macros",
