@@ -38,6 +38,9 @@
           transform 0.15s ease,
           box-shadow 0.15s ease;
         cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
       }
 
       .file-card:hover {
@@ -63,7 +66,6 @@
         margin-top: 40px;
       }
 
-      /* Floating + Button */
       .fab {
         position: fixed;
         bottom: 30px;
@@ -101,16 +103,15 @@
       {% else %}
       <div class="file-grid">
         {% for file in files %}
-        <div class="file-card">
+        <a href="/download?filename={{ file.filename }}" class="file-card">
           <img src="/static/icons/file.png" alt="File Icon" class="file-icon" />
           <div class="file-name">{{ file.filename }}</div>
-        </div>
+        </a>
         {% endfor %}
       </div>
       {% endif %}
     </div>
 
-    <!-- Floating Upload Button -->
     <a href="/upload" class="fab">+</a>
   </body>
 </html>
