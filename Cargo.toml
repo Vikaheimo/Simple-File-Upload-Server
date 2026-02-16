@@ -8,6 +8,7 @@ license = "MIT"
 anyhow = "1.0.101"
 askama = "0.15.4"
 axum = { version = "0.8.8", features = ["multipart"] }
+axum-embed = "0.1.0"
 clap = { version = "4.5.58", features = ["derive"] }
 colog = "1.4.0"
 fs2 = "0.4.3"
