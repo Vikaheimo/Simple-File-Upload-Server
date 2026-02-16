@@ -10,12 +10,40 @@ use crate::{
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Filedata {
     pub filename: String,
+    pub file_type: FileType,
 }
 
 impl From<tokio::fs::DirEntry> for Filedata {
     fn from(value: tokio::fs::DirEntry) -> Self {
+        let filename = value.file_name().to_string_lossy().to_string();
+        let file_type = FileType::from_filename(&filename);
         Filedata {
-            filename: value.file_name().to_string_lossy().to_string(),
+            filename,
+            file_type,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum FileType {
+    Text,
+    Image,
+    Video,
+    Unknown { extension: Option<String> },
+}
+
+impl FileType {
+    fn from_filename(filename: &str) -> FileType {
+        let file_extension = filename.split('.').next_back();
+
+        match file_extension {
+            None => FileType::Unknown { extension: None },
+            Some("mov" | "mp4") => FileType::Video,
+            Some("txt") => FileType::Text,
+            Some(".jpg" | ".png") => FileType::Image,
+            Some(other_extension) => FileType::Unknown {
+                extension: Some(other_extension.to_owned()),
+            },
         }
     }
 }
@@ -103,6 +131,7 @@ impl FileUploader {
         }
         file_handle.flush().await?;
         Ok(Filedata {
+            file_type: FileType::from_filename(&safe_name),
             filename: safe_name,
         })
     }

@@ -103,8 +103,32 @@
       {% else %}
       <div class="file-grid">
         {% for file in files %}
-        <a href="/download?filename={{ file.filename }}" class="file-card">
-          <img src="/static/icons/file.png" alt="File Icon" class="file-icon" />
+        <a
+          href="/download?filename={{ file.filename | urlencode }}"
+          class="file-card"
+        >
+          {% match file.file_type %} {% when FileType::Text %}
+          <img src="/static/icons/text.png" alt="Text File" class="file-icon" />
+          {% when FileType::Image %}
+          <img
+            src="/static/icons/image.png"
+            alt="Image File"
+            class="file-icon"
+          />
+          {% when FileType::Video %}
+          <img
+            src="/static/icons/video.png"
+            alt="Video File"
+            class="file-icon"
+          />
+          {% when FileType::Unknown { extension } %}
+          <img
+            src="/static/icons/file.png"
+            alt="Unknown File"
+            class="file-icon"
+          />
+          {% endmatch %}
+
           <div class="file-name">{{ file.filename }}</div>
         </a>
         {% endfor %}

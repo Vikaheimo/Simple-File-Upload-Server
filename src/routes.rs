@@ -1,14 +1,15 @@
 use askama::Template;
 use axum::{
-    body::Body,
-    extract::{Multipart, Query, State},
-    http::{StatusCode, header},
-    response::{Html, IntoResponse},
+    Router, body::Body, extract::{Multipart, Query, State}, http::{Response, StatusCode, header}, response::{Html, IntoResponse}
 };
 use log::info;
 use tokio_util::io::ReaderStream;
 
-use crate::{AppState, controllers::Filedata, error::ApplicationResult};
+use crate::{
+    AppState,
+    controllers::{FileType, Filedata},
+    error::ApplicationResult,
+};
 
 pub async fn get_info(State(state): State<AppState>) -> String {
     state.get_info().await
@@ -88,4 +89,25 @@ pub struct NotFoundTemplate;
 pub async fn get_not_found_page() -> ApplicationResult<impl IntoResponse> {
     let template = NotFoundTemplate;
     Ok((StatusCode::NOT_FOUND, Html(template.render()?)).into_response())
+}
+
+static STATIC_DIR: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/static");
+
+async fn get_static_handler(axum::extract::Path(path): axum::extract::Path<String>) -> impl IntoResponse {
+
+    match STATIC_DIR.get_file(path) {
+        Some(file) => {
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CACHE_CONTROL, "public, max-age=31536000")
+                .body(Body::from(file.contents()))
+                .unwrap()
+        }
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+
+pub fn static_content_router() -> Router<AppState> {
+    Router::new().route("/static/{*path}", axum::routing::get(get_static_handler))
 }

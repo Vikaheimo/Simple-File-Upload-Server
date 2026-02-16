@@ -96,6 +96,7 @@ async fn run() -> anyhow::Result<()> {
         .route("/upload", get(routes::get_upload_file_page))
         .route("/download", get(routes::get_download_file))
         .route("/", get(routes::get_file_display_page))
+        .merge(routes::static_content_router())
         .fallback(get_not_found_page)
         .layer(DefaultBodyLimit::disable())
         .layer(axum::middleware::from_fn(middleware::logging_middleware))
