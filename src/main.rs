@@ -52,7 +52,7 @@ use crate::{controllers::FileUploader, routes::get_not_found_page};
 #[command(version, about, long_about = None)]
 struct Environment {
     /// The address where the server should bind to
-    #[arg(short, long, default_value_t=String::from("localhost:3000"))]
+    #[arg(short, long, default_value_t=String::from("0.0.0.0:3000"))]
     pub server_address: String,
 
     /// Folder where uploads are stored at
